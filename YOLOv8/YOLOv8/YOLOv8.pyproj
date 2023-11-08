@@ -2,15 +2,15 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>5696b9cf-3048-4f06-8937-b0153ec506cd</ProjectGuid>
+    <ProjectGuid>f525f77f-a1f7-4539-94cd-e020c77366fb</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>LucasKande.py</StartupFile>
+    <StartupFile>YOLOv8.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
-    <Name>VideoMotionDetector</Name>
-    <RootNamespace>VideoMotionDetector</RootNamespace>
+    <Name>YOLOv8</Name>
+    <RootNamespace>YOLOv8</RootNamespace>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugSymbols>true</DebugSymbols>
@@ -21,8 +21,7 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Farneback.py" />
-    <Compile Include="LucasKande.py" />
+    <Compile Include="YOLOv8.py" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in
