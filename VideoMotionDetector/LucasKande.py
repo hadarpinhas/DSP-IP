@@ -10,9 +10,11 @@ import sys
 
 # videoPath = Path(r"C:\Users\User\Documents\dataBase\DSP-IP\videos\videos\\1.h264")
 videoPath = Path(r"C:\Users\User\Documents\dataBase\DSP-IP\videos\24_cut.ts")
+videoPath = Path(r"C:\Users\User\Documents\dataBase\DSP-IP\NOT_ANNOTATED_MOVIES\NOT_ANNOTATED_MOVIES\output1.mp4")
+videoPath = Path(r"C:\Users\User\Documents\dataBase\DSP-IP\NOT_ANNOTATED_MOVIES\NOT_ANNOTATED_MOVIES\ENY_30_335.mp4")
 
 # when working on my laptop I decreased the videos frames by x0.9 to fit my laptop screen
-screenFactor = 1 # 0.9 for my laptop smaller screen
+screenFactor = 2 # 0.9 for my laptop smaller screen
 
 cap = cv2.VideoCapture(str(videoPath)) 
 
@@ -29,7 +31,7 @@ color = np.random.randint(0, 255, (100, 3))
 # Take first frame and find corners in it 
 ret, firstFrame = cap.read()
 print(f"{firstFrame.shape=}")
-if screenFactor < 1: # for my laptop smaller screen
+if screenFactor < 1 or screenFactor > 1: # for my laptop smaller screen
 	firstFrame = cv2.resize(firstFrame, None, fx=screenFactor,fy=screenFactor)	
 
 
@@ -53,7 +55,7 @@ print(f"{p0=}")
 while(True):
 
 	ret, newFrame = cap.read()
-	if screenFactor < 1:	# for my laptop smaller screen	
+	if screenFactor < 1 or screenFactor > 1:	# for my laptop smaller screen	
 		newFrame = cv2.resize(newFrame, None, fx=screenFactor,fy=screenFactor)	
 
 	newGray = cv2.cvtColor(newFrame, cv2.COLOR_BGR2GRAY)
@@ -70,11 +72,15 @@ while(True):
 		# Select good points 
 	is_feature_detected = False	
 	# print(f"{st=}")
+	status0List = []
 	for errIx, errEle in enumerate(err):
 		if 	errEle[0] > 10 or st[errIx] == [0]:
-			print(f"{p1=}")			
-			p1 = np.delete(p1,errIx, axis=0)
-			print(f"deleting {errEle}")		
+			status0List.append(errIx)
+			
+	print(f"{p1=}")			
+	print(f"deleting {status0List}")		
+	
+	p1 = np.delete(p1,status0List, axis=0)
 		
 	print(f"{p1=}")
 	print(f"{st=}")
@@ -93,8 +99,16 @@ while(True):
 	# # draw the tracks 
 	for i, (new, old) in enumerate(zip(good_new, good_old)): 
 				
-		p1X, p1Y = new.ravel().astype(np.uint32)			
+		p1X, p1Y = new.ravel().astype(np.uint32)		
 		p0X, p0Y = old.ravel().astype(np.uint32)
+
+		print(f"{p1X=}")
+		print(f"{p1Y=}")
+		print(f"{oldGray.shape[1]=}")
+		print(f"{oldGray.shape[0]=}")
+		if p1X < 0 - bboxWidth//2	or p1Y < 0 -bboxHeight//2 or \
+			 p1X > oldGray.shape[1] + bboxWidth//2 or p1Y > oldGray.shape[0]+bboxHeight//2:
+			sys.exit("out of screen!")		
 
 		zeroedImage = cv2.line(zeroedImage, (p1X, p1Y), (p0X, p0Y), color[i].tolist(), 2)
 		
@@ -125,13 +139,11 @@ while(True):
 		
 	print(f"{p0=}")		
 
-	if x0 < 0 or y0 < 0 or x1 > oldGray.shape[1] or y1 > oldGray.shape[0]:
-		sys.exit("out of screen!")
 
 		
 	cv2.imshow('frame', img) 
 	
-	k = cv2.waitKey(-1) 
+	k = cv2.waitKey(1) 
 	if k == 27: 
 		break		
 
