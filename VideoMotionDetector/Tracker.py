@@ -19,14 +19,16 @@ class Tracker(unittest.TestCase):
 
         print('-'*100 + '\n' + ' '*50 + 'Running Tracker:' + '\n' + '-'*100)
 
-        # videoPath = r"C:\Users\User\Documents\dataBase\DSP-IP\NOT_ANNOTATED_MOVIES\NOT_ANNOTATED_MOVIES\output1.mp4"
-        # videoPath = r"C:\Users\User\Documents\dataBase\DSP-IP\NOT_ANNOTATED_MOVIES\NOT_ANNOTATED_MOVIES\ENY_30_335.mp4"
-        # videoPath = r"C:\Users\User\Documents\dataBase\DSP-IP\videos\NOT_ANNOTATED_MOVIES\NOT_ANNOTATED_MOVIES\ENY_30_335_shorten.mp4"
-        videoPath = r"C:\Users\User\Documents\dataBase\DSP-IP\videos\NOT_ANNOTATED_MOVIES\NOT_ANNOTATED_MOVIES\ENY_30_335_1minute.mp4"        
-        # videoPath = r"C:\Users\User\Documents\dataBase\DSP-IP\videos\24_cut.ts"
+        basePath = Path(r"/home/yossi/Documents/database/hadar")
+        # basePath = Path(r"C:\Users\User\Documents\dataBase\DSP-IP")
 
-        
+        relPath = Path(r"videos/NOT_ANNOTATED_MOVIES/NOT_ANNOTATED_MOVIES/ENY_30_335_1minute.mp4")
+        # relPath = Path(r"videos/24_cut.ts")
+
+        videoPath = str(basePath / relPath)
+        print(f"{videoPath=}")
         self.cap = cv2.VideoCapture(videoPath)
+        print(self.cap)
         self.waitKeyParameter = 1 # in milliseconds, -1/0 for continuous
         self.startDetectionFrame = 0 # 
 
@@ -53,6 +55,10 @@ class Tracker(unittest.TestCase):
 
         frameNumber = 0
         _, firstFrame = self.cap.read()
+        if firstFrame is None:
+            return None,None
+
+        
         while(frameNumber < self.startDetectionFrame): # skip irrelevant frames
             _, firstFrame = self.cap.read()            
             frameNumber += 1
@@ -86,6 +92,8 @@ class Tracker(unittest.TestCase):
         
         while(True):
             _, newFrame = self.cap.read()
+            if newFrame is None :
+                continue 
             if self.screenSizeFactor != 1: # for my laptop smaller screen
                 newFrame = cv2.resize(newFrame, None, fx=self.screenSizeFactor,fy=self.screenSizeFactor)
 
