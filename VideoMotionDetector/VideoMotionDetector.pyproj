@@ -21,6 +21,7 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Tracker.py" />
     <Compile Include="Farneback.py" />
     <Compile Include="LucasKande.py" />
   </ItemGroup>
