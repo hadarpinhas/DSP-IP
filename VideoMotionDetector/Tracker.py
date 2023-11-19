@@ -30,7 +30,7 @@ class Tracker(unittest.TestCase):
         self.waitKeyParameter = 1 # in milliseconds, -1/0 for continuous
         self.startDetectionFrame = 0 # 
 
-        self.to_draw_line = False        
+        self.to_draw_line = True        
 
         # when working on my laptop I decreased the videos frames by x0.9 to fit my laptop screen
         self.screenSizeFactor = 2 # 0.9 for my laptop smaller screen
@@ -96,20 +96,12 @@ class Tracker(unittest.TestCase):
                 newFrame = self.drawFeatures(frame=newFrame, newFeatures=p1Good, oldFeatures=p0)
                 self.shiftRoiMask(p1Good)
                 p0 = p1Good
-            else:
-                print(f"no features found, looking for features in {self.x0=}, {self.x1=}, {self.y0=}, {self.y1=}")
-                newFeatures = self.getImageFeatures(newFrame)
-                if type(newFeatures) != type(None):
-                    p0 = self.searchLargerRoi(newFrame)
-                # print(f"{newFeatruePoints=}")
-                # print(f"{p0=}")
-                # if type(newFeatruePoints) != type(None) and newFeatruePoints.size > p0.size:
-                #     print("newFeatruePoints.size > p0.size")
-                #     p0 = self.getClosestFeatures(newFeatruePoints, p0)
-                # else:
-                #     print("p0 same size")
-                    
-                #     p0 = newFeatruePoints
+                oldFrame = newFrame.copy()
+            # else:
+            #     print(f"no features found, looking for features in {self.x0=}, {self.x1=}, {self.y0=}, {self.y1=}")
+            #     newFeatures = self.getImageFeatures(newFrame)
+            #     if type(newFeatures) != type(None):
+            #         p0 = self.searchLargerRoi(newFrame)
 
             cv2.imshow('frame', newFrame) 
                
@@ -117,8 +109,6 @@ class Tracker(unittest.TestCase):
             if k == 27: 
                 break
 
-            oldFrame = newFrame.copy()
-        
         cv2.destroyAllWindows() 
         self.cap.release()
 
@@ -277,3 +267,17 @@ class Tracker(unittest.TestCase):
 if __name__ == '__main__':
     suite = unittest.TestLoader().loadTestsFromTestCase(Tracker)
     unittest.TextTestRunner(verbosity=0).run(suite)
+
+
+
+
+
+                # print(f"{newFeatruePoints=}")
+                # print(f"{p0=}")
+                # if type(newFeatruePoints) != type(None) and newFeatruePoints.size > p0.size:
+                #     print("newFeatruePoints.size > p0.size")
+                #     p0 = self.getClosestFeatures(newFeatruePoints, p0)
+                # else:
+                #     print("p0 same size")
+                    
+                #     p0 = newFeatruePoints
