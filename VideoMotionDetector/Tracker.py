@@ -6,6 +6,7 @@ import cv2
 import numpy as np
 import sys
 import math
+import os
 
 class Tracker(unittest.TestCase):
     def setUp(self):
@@ -19,31 +20,56 @@ class Tracker(unittest.TestCase):
 
         print('-'*100 + '\n' + ' '*50 + 'Running Tracker:' + '\n' + '-'*100)
 
-        basePath = Path(r"/home/yossi/Documents/database/hadar/")
-        # basePath = Path(r"C:\Users\User\Documents\dataBase\DSP-IP")
-
-        # relPath = Path(r"videos\NOT_ANNOTATED_MOVIES\NOT_ANNOTATED_MOVIES\ENY_30_335_1minute.mp4")
-        relPath = Path(r"videos\24_cut.ts")
-
-        videoPath = str(basePath / relPath)   
-        self.cap = cv2.VideoCapture(videoPath)
-        self.startDetectionFrame = 0 # 
-
-        self.waitKeyParameter = 1 # in milliseconds, -1/0 for continuous
-
-        self.to_draw_line = True        
-
-        self.screenSizeFactor = 2 # 0.9 for my laptop smaller screen
-        
-        self.color = np.random.randint(0, 255, (100, 3))             # Create some random colors for corner annotaion
+        self.setParameters()
 
         self.runTracker()
 
     #---------------------------------------------------------------------------------------------------------------------
 
-    def runTracker(self,):
+    def setParameters(self):
+
+        basePath = r"/home/yossi/Documents/database/hadar"
+        # basePath = Path(r"C:\Users\User\Documents\dataBase\DSP-IP")
+
+        relPath = r"videos/NOT_ANNOTATED_MOVIES/NOT_ANNOTATED_MOVIES/ENY_30_335_len_1m2s.mp4"
+        # relPath = Path(r"/videos/24_cut.ts")
+
+        # ffmpeg -i ENY_30_335.mp4 -ss 00:05:30 -t 00:01:20 -c:v copy -c:a copy ENY_30_335_len_1m2s.mp4
+        videoPath = "/home/yossi/Documents/database/hadar/videos/NOT_ANNOTATED_MOVIES/NOT_ANNOTATED_MOVIES/ENY_30_335_len_1m2s.mp4" #str(basePath / relPath) 
+        # videoPath = "/home/yossi/Documents/database/hadar/videos/NOT_ANNOTATED_MOVIES/NOT_ANNOTATED_MOVIES/ENY_30_337_start_2m10s.mp4" #str(basePath / relPath) 
+        # videoPath = "/home/yossi/Documents/database/hadar/videos/NOT_ANNOTATED_MOVIES/NOT_ANNOTATED_MOVIES/ENY_30_338_start_3p20s_for_60s.mp4" #str(basePath / relPath) 
+        
+        # videoPath = os.path.join(basePath , relPath) #str(basePath / relPath) 
+
+        self.outputVideoPath = "/home/yossi/Documents/database/hadar/videos/outputVideos/videoOutput1_ENY_30_335.mp4"# os.path.join(basePath , "/videos/outputVideos/videoOutput_ENY_30_335.mp4")
+        # self.outputVideoPath = "/home/yossi/Documents/database/hadar/videos/outputVideos/videoOutput_ENY_30_337.mp4"# os.path.join(basePath , "/videos/outputVideos/videoOutput_ENY_30_335.mp4")
+        # self.outputVideoPath = "/home/yossi/Documents/database/hadar/videos/outputVideos/videoOutput_ENY_30_338_start_3p20s_for_60s.mp4"# os.path.join(basePath , "/videos/outputVideos/videoOutput_ENY_30_335.mp4")
+        
+        print(f"{self.outputVideoPath=}")
+        self.fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        self.outputFps = 30.0
+
+        self.cap = cv2.VideoCapture(videoPath)
+        self.startDetectionFrame = 0 # 
+
+        self.waitKeyParameter = 1 # in milliseconds, -1/0 for continuous
+
+        self.to_draw_line = False        
+
+        self.screenSizeFactor = 2 # 0.9 for my laptop smaller screen
+
+        self.myShiTomasiNewFeaturesThreshold = 0.01 #-float('inf') 
+        self.opticalFlowErrorThreshold = 10
+        
+        self.color = np.random.randint(0, 255, (100, 3))             # Create some random colors for corner annotaion
+
+    #---------------------------------------------------------------------------------------------------------------------
+
+    def runTracker(self):
 
         firstFrame, p0 = self.getFirstImage()
+
+        self.outputVideo = cv2.VideoWriter(filename=self.outputVideoPath, fourcc=self.fourcc, fps=self.outputFps, frameSize=(self.frameWidth,self.frameHeight))
 	
         self.startTrakcerLoop(firstFrame, p0)
 
@@ -86,48 +112,63 @@ class Tracker(unittest.TestCase):
         
         while(True):
             _, newFrame = self.cap.read()
+            if type(newFrame) == type(None):
+                break
             if self.screenSizeFactor != 1: # for my laptop smaller screen
                 newFrame = cv2.resize(newFrame, None, fx=self.screenSizeFactor,fy=self.screenSizeFactor)
 
             p1Good = self.getOpticalFlowFeatures(oldFrame, newFrame, p0)
-    
+
+            print(f"{p1Good=}")
             if p1Good.size > 0:
                 print(f"features found, in {p1Good=}")
                 newFrame = self.drawFeatures(frame=newFrame, newFeatures=p1Good, oldFeatures=p0)
                 self.shiftRoiMask(p1Good)
-                p0 = p1Good
-                oldFrame = newFrame.copy()
             else:
                 print(f"no features found, looking for features in {self.x0=}, {self.x1=}, {self.y0=}, {self.y1=}")
+                p1Good = []
                 goodFeatures = self.getNewFeatures(newFrame)
                 if len(goodFeatures) > 0:
-                    p0 = goodFeatures.reshape(-1,1,2)
-                print(f"{p0=}")
+                    p0 = np.array(goodFeatures).copy().astype(np.float32)
+                    # print(f"{p0=}")
+                    print(f"{p0.shape=}")
+                    # print(f"{p0.dtype=}")               
 
-
+            oldFrame = newFrame.copy()
+        
+            cv2.rectangle(newFrame, (self.x0, self.y0), (self.x1, self.y1), (0, 255, 0), 1)
             cv2.imshow('frame', newFrame) 
+            
+            self.outputVideo.write(newFrame)
                
-            k = cv2.waitKey(-1) #self.waitKeyParameter)
+            k = cv2.waitKey(self.waitKeyParameter)
             if k == 27: 
                 break
 
         cv2.destroyAllWindows() 
         self.cap.release()
+        self.outputVideo.release()
 
     #---------------------------------------------------------------------------------------------------------------------
 
     def getNewFeatures(self, newFrame):
         # This function returns all features with threshold > absolute val
         src = newFrame[self.y0: self.y1, self.x0: self.x1]
-        src_gray = cv.cvtColor(src, cv.COLOR_BGR2GRAY)
-        myShiTomasi_dst = cv.cornerMinEigenVal(src=src_gray, blockSize=3, ksize=3, borderType=cv2.BORDER_REFLECT_101)
+        src_gray = cv2.cvtColor(src, cv2.COLOR_BGR2GRAY)
+        cv2.imshow('src_gray', src_gray) 
+
+        myShiTomasi_dst = cv2.cornerMinEigenVal(src=src_gray, blockSize=3, ksize=3, borderType=cv2.BORDER_REFLECT_101)
 
         goodFeatures = []
-        myShiTomasi_minVal, myShiTomasi_maxVal, _, _ = cv.minMaxLoc(myShiTomasi_dst)
+        myShiTomasi_minVal, myShiTomasi_maxVal, _, _ = cv2.minMaxLoc(myShiTomasi_dst)
+        # print(f"{myShiTomasi_minVal=}")
+        # print(f"{myShiTomasi_maxVal=}")
+
         for i in range(src_gray.shape[0]):
             for j in range(src_gray.shape[1]):
-                if myShiTomasi_dst[i,j] > myShiTomasi_minVal + ( myShiTomasi_maxVal - myShiTomasi_minVal ) * self.myShiTomasiThreshold
-                    goodFeatures.append([[i,j]])
+                if myShiTomasi_dst[i,j] > self.myShiTomasiNewFeaturesThreshold: # myShiTomasi_minVal + ( myShiTomasi_maxVal - myShiTomasi_minVal ) * self.myShiTomasiThreshold:
+                    goodFeatures.append([[self.x0 + j, self.y0 + i]])
+        # sort 
 
         return goodFeatures
 
@@ -144,7 +185,6 @@ class Tracker(unittest.TestCase):
             newFeatures = self.getImageFeatures(newFrame, roiMask)
 
         return newFeatures
-
 
     #---------------------------------------------------------------------------------------------------------------------
 
@@ -235,8 +275,10 @@ class Tracker(unittest.TestCase):
                 nextPts=None,
                 winSize = (21, 21),       # size of the search window at each pyramid level
                 maxLevel = 2,           #0-based maximal pyramid level number; if set to 0, pyramids are not used (single level), if set to 1, two levels are used, and so on                
-                criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.03) # parameter, specifying the termination criteria of the iterative search algorithm                
-        )
+                criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.03), # parameter, specifying the termination criteria of the iterative search algorithm                
+                flags = cv2.OPTFLOW_LK_GET_MIN_EIGENVALS,
+                minEigThreshold = self.myShiTomasiNewFeaturesThreshold
+         )# criteria -> after the specified maximum number of iterations criteria.maxCount or when the search window moves by less than criteria.epsilon
 
         p1Good = self.removeBadFeatures(p1, st, err)   
 
@@ -253,7 +295,8 @@ class Tracker(unittest.TestCase):
         status0List = []
         
         for errIdx, errEle in enumerate(err):
-            if errEle[0] > 30 or st[errIdx] == [0] or (not self.y0 <= p1[errIdx][0][1] <= self.y1) or (not self.x0 <= p1[errIdx][0][0] <= self.x1):
+            if errEle[0] > self.opticalFlowErrorThreshold or st[errIdx] == [0] or \
+             (not self.y0 <= p1[errIdx][0][1] <= self.y1) or (not self.x0 <= p1[errIdx][0][0] <= self.x1):
                 status0List.append(errIdx)
 
         p1Good = np.delete(p1,status0List, axis=0)
@@ -264,7 +307,7 @@ class Tracker(unittest.TestCase):
 
     def drawFeatures(self, frame, newFeatures, oldFeatures):
          
-        for idx, (new, old) in enumerate(zip(newFeatures, oldFeatures)): 
+        for idx, (new, old) in enumerate(zip(newFeatures[0:1], oldFeatures[0:1])): 
 				
             p1X, p1Y = new.ravel().astype(np.uint32)
             p0X, p0Y = old.ravel().astype(np.uint32)
@@ -273,7 +316,6 @@ class Tracker(unittest.TestCase):
 
             frame = cv2.circle(frame, (p1X, p1Y), 5, self.color[idx].tolist(), -1)
 
-        frame = cv2.rectangle(frame, (self.x0, self.y0), (self.x1, self.y1), (0, 255, 0), 1)
         # print(f"{self.x0=}")        
         # print(f"{self.x1=}")        
         # print(f"{self.y0=}")        
