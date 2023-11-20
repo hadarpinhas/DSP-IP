@@ -19,22 +19,20 @@ class Tracker(unittest.TestCase):
 
         print('-'*100 + '\n' + ' '*50 + 'Running Tracker:' + '\n' + '-'*100)
 
-        basePath = Path(r"/home/yossi/Documents/database/hadar")
+        basePath = Path(r"/home/yossi/Documents/database/hadar/")
         # basePath = Path(r"C:\Users\User\Documents\dataBase\DSP-IP")
 
-        relPath = Path(r"videos/NOT_ANNOTATED_MOVIES/NOT_ANNOTATED_MOVIES/ENY_30_335_1minute.mp4")
-        # relPath = Path(r"videos/24_cut.ts")
+        # relPath = Path(r"videos\NOT_ANNOTATED_MOVIES\NOT_ANNOTATED_MOVIES\ENY_30_335_1minute.mp4")
+        relPath = Path(r"videos\24_cut.ts")
 
-        videoPath = str(basePath / relPath)
-        print(f"{videoPath=}")
+        videoPath = str(basePath / relPath)   
         self.cap = cv2.VideoCapture(videoPath)
-        print(self.cap)
-        self.waitKeyParameter = 1 # in milliseconds, -1/0 for continuous
         self.startDetectionFrame = 0 # 
+
+        self.waitKeyParameter = 1 # in milliseconds, -1/0 for continuous
 
         self.to_draw_line = True        
 
-        # when working on my laptop I decreased the videos frames by x0.9 to fit my laptop screen
         self.screenSizeFactor = 2 # 0.9 for my laptop smaller screen
         
         self.color = np.random.randint(0, 255, (100, 3))             # Create some random colors for corner annotaion
@@ -55,10 +53,6 @@ class Tracker(unittest.TestCase):
 
         frameNumber = 0
         _, firstFrame = self.cap.read()
-        if firstFrame is None:
-            return None,None
-
-        
         while(frameNumber < self.startDetectionFrame): # skip irrelevant frames
             _, firstFrame = self.cap.read()            
             frameNumber += 1
@@ -92,8 +86,6 @@ class Tracker(unittest.TestCase):
         
         while(True):
             _, newFrame = self.cap.read()
-            if newFrame is None :
-                continue 
             if self.screenSizeFactor != 1: # for my laptop smaller screen
                 newFrame = cv2.resize(newFrame, None, fx=self.screenSizeFactor,fy=self.screenSizeFactor)
 
@@ -105,20 +97,39 @@ class Tracker(unittest.TestCase):
                 self.shiftRoiMask(p1Good)
                 p0 = p1Good
                 oldFrame = newFrame.copy()
-            # else:
-            #     print(f"no features found, looking for features in {self.x0=}, {self.x1=}, {self.y0=}, {self.y1=}")
-            #     newFeatures = self.getImageFeatures(newFrame)
-            #     if type(newFeatures) != type(None):
-            #         p0 = self.searchLargerRoi(newFrame)
+            else:
+                print(f"no features found, looking for features in {self.x0=}, {self.x1=}, {self.y0=}, {self.y1=}")
+                goodFeatures = self.getNewFeatures(newFrame)
+                if len(goodFeatures) > 0:
+                    p0 = goodFeatures.reshape(-1,1,2)
+                print(f"{p0=}")
+
 
             cv2.imshow('frame', newFrame) 
                
-            k = cv2.waitKey(self.waitKeyParameter)
+            k = cv2.waitKey(-1) #self.waitKeyParameter)
             if k == 27: 
                 break
 
         cv2.destroyAllWindows() 
         self.cap.release()
+
+    #---------------------------------------------------------------------------------------------------------------------
+
+    def getNewFeatures(self, newFrame):
+        # This function returns all features with threshold > absolute val
+        src = newFrame[self.y0: self.y1, self.x0: self.x1]
+        src_gray = cv.cvtColor(src, cv.COLOR_BGR2GRAY)
+        myShiTomasi_dst = cv.cornerMinEigenVal(src=src_gray, blockSize=3, ksize=3, borderType=cv2.BORDER_REFLECT_101)
+
+        goodFeatures = []
+        myShiTomasi_minVal, myShiTomasi_maxVal, _, _ = cv.minMaxLoc(myShiTomasi_dst)
+        for i in range(src_gray.shape[0]):
+            for j in range(src_gray.shape[1]):
+                if myShiTomasi_dst[i,j] > myShiTomasi_minVal + ( myShiTomasi_maxVal - myShiTomasi_minVal ) * self.myShiTomasiThreshold
+                    goodFeatures.append([[i,j]])
+
+        return goodFeatures
 
     #---------------------------------------------------------------------------------------------------------------------
 
@@ -171,6 +182,7 @@ class Tracker(unittest.TestCase):
     #---------------------------------------------------------------------------------------------------------------------
 
     def getImageFeatures(self, img, roiMask = None):
+        # This function returns all features with threshold > (qualityLevel* max_value_feature), rather than absolute val as threshold
         #https://docs.opencv.org/3.4/db/d27/tutorial_py_table_of_contents_feature2d.html
         # goodFeaturesToTrack 2 options: Shi-Tomasi or Harris corner score
         # By default using Shi-Tomasi algorithm (useHarrisDetector = False), based on Harris corner detection.
