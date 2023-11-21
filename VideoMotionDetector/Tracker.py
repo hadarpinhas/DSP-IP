@@ -28,24 +28,24 @@ class Tracker(unittest.TestCase):
 
     def setParameters(self):
 
+        # short video using this: ffmpeg -i ENY_30_335.mp4 -ss 00:05:30 -t 00:01:20 -c:v copy -c:a copy ENY_30_335_len_1m2s.mp4
+
         basePath = r"/home/yossi/Documents/database/hadar"
-        # basePath = Path(r"C:\Users\User\Documents\dataBase\DSP-IP")
 
         relPath = r"videos/NOT_ANNOTATED_MOVIES/NOT_ANNOTATED_MOVIES/ENY_30_335_len_1m2s.mp4"
-        # relPath = Path(r"/videos/24_cut.ts")
+        # relPath = r"videos/NOT_ANNOTATED_MOVIES/NOT_ANNOTATED_MOVIES/ENY_30_337_start_2m10s.mp4"
+        # relPath = r"videos/NOT_ANNOTATED_MOVIES/NOT_ANNOTATED_MOVIES/ENY_30_338_start_3p20s_for_60s.mp4"
 
-        # ffmpeg -i ENY_30_335.mp4 -ss 00:05:30 -t 00:01:20 -c:v copy -c:a copy ENY_30_335_len_1m2s.mp4
-        videoPath = "/home/yossi/Documents/database/hadar/videos/NOT_ANNOTATED_MOVIES/NOT_ANNOTATED_MOVIES/ENY_30_335_len_1m2s.mp4" #str(basePath / relPath) 
-        # videoPath = "/home/yossi/Documents/database/hadar/videos/NOT_ANNOTATED_MOVIES/NOT_ANNOTATED_MOVIES/ENY_30_337_start_2m10s.mp4" #str(basePath / relPath) 
-        # videoPath = "/home/yossi/Documents/database/hadar/videos/NOT_ANNOTATED_MOVIES/NOT_ANNOTATED_MOVIES/ENY_30_338_start_3p20s_for_60s.mp4" #str(basePath / relPath) 
-        
-        # videoPath = os.path.join(basePath , relPath) #str(basePath / relPath) 
+        outRelPath = r"videos/outputVideos/videoOutput2_ENY_30_335.mp4"
+        # outRelPath = r"videos/outputVideos/videoOutput_ENY_30_337.mp4"
+        # outRelPath = r"videos/outputVideos/videoOutput_ENY_30_338_start_3p20s_for_60s.mp4"
 
-        self.outputVideoPath = "/home/yossi/Documents/database/hadar/videos/outputVideos/videoOutput1_ENY_30_335.mp4"# os.path.join(basePath , "/videos/outputVideos/videoOutput_ENY_30_335.mp4")
-        # self.outputVideoPath = "/home/yossi/Documents/database/hadar/videos/outputVideos/videoOutput_ENY_30_337.mp4"# os.path.join(basePath , "/videos/outputVideos/videoOutput_ENY_30_335.mp4")
-        # self.outputVideoPath = "/home/yossi/Documents/database/hadar/videos/outputVideos/videoOutput_ENY_30_338_start_3p20s_for_60s.mp4"# os.path.join(basePath , "/videos/outputVideos/videoOutput_ENY_30_335.mp4")
-        
-        print(f"{self.outputVideoPath=}")
+        videoPath = os.path.join(basePath , relPath)      
+        self.outputVideoPath = os.path.join(basePath , outRelPath)
+
+        print(f"\n{videoPath=}")
+        print(f"{self.outputVideoPath=}\n")
+
         self.fourcc = cv2.VideoWriter_fourcc(*'mp4v')
         self.outputFps = 30.0
 
@@ -58,10 +58,13 @@ class Tracker(unittest.TestCase):
 
         self.screenSizeFactor = 2 # 0.9 for my laptop smaller screen
 
-        self.myShiTomasiNewFeaturesThreshold = 0.01 #-float('inf') 
-        self.opticalFlowErrorThreshold = 10
+        self.maxNumOfFeaturesShown = 1 # number of circles annotating features (corners) found in the image
+
+        self.initialFeatureThreshold = 0.001 # lower myShiTomasiNewFeaturesThreshold to find the first feature
+        self.myShiTomasiNewFeaturesThreshold = 0.01 # Remove values < 0.01. cv2.cornerMinEigenVal outputs value=min(λ1,λ2) for each pixel.
+        self.opticalFlowErrorThreshold = 10 # Removes error > Threshold. cv2.calcOpticalFlowPyrLK outputs position (p1), status (st), and error (er). 
         
-        self.color = np.random.randint(0, 255, (100, 3))             # Create some random colors for corner annotaion
+        self.color = np.random.randint(0, 255, (self.maxNumOfFeaturesShown, 3))             # Create some random colors for corner annotaion
 
     #---------------------------------------------------------------------------------------------------------------------
 
@@ -97,7 +100,8 @@ class Tracker(unittest.TestCase):
         self.roiMask    = np.zeros((self.frameHeight, self.frameWidth), dtype=np.uint8)
         self.roiMask[self.y0:self.y1, self.x0:self.x1] = 255
 
-        p0 = self.getImageFeatures(firstFrame)
+        goodFeatures = self.getNewFeatures(firstFrame, Threshold=self.initialFeatureThreshold)
+        p0 = np.array(goodFeatures).copy().astype(np.float32)
 
         self.drawFeatures(firstFrame, newFeatures = p0, oldFeatures = p0)
 
@@ -119,20 +123,18 @@ class Tracker(unittest.TestCase):
 
             p1Good = self.getOpticalFlowFeatures(oldFrame, newFrame, p0)
 
-            print(f"{p1Good=}")
+            # print(f"{p1Good=}")
             if p1Good.size > 0:
-                print(f"features found, in {p1Good=}")
+                # print(f"features found, in {p1Good=}")
                 newFrame = self.drawFeatures(frame=newFrame, newFeatures=p1Good, oldFeatures=p0)
                 self.shiftRoiMask(p1Good)
             else:
-                print(f"no features found, looking for features in {self.x0=}, {self.x1=}, {self.y0=}, {self.y1=}")
+                # print(f"no features found, looking for features in {self.x0=}, {self.x1=}, {self.y0=}, {self.y1=}")
                 p1Good = []
                 goodFeatures = self.getNewFeatures(newFrame)
                 if len(goodFeatures) > 0:
                     p0 = np.array(goodFeatures).copy().astype(np.float32)
-                    # print(f"{p0=}")
-                    print(f"{p0.shape=}")
-                    # print(f"{p0.dtype=}")               
+                    self.color = np.random.randint(0, 255, (self.maxNumOfFeaturesShown, 3))             # Create some random colors for corner annotaion
 
             oldFrame = newFrame.copy()
         
@@ -151,7 +153,9 @@ class Tracker(unittest.TestCase):
 
     #---------------------------------------------------------------------------------------------------------------------
 
-    def getNewFeatures(self, newFrame):
+    def getNewFeatures(self, newFrame, Threshold=None):
+        if Threshold == None:
+            Threshold = self.myShiTomasiNewFeaturesThreshold
         # This function returns all features with threshold > absolute val
         src = newFrame[self.y0: self.y1, self.x0: self.x1]
         src_gray = cv2.cvtColor(src, cv2.COLOR_BGR2GRAY)
@@ -161,48 +165,13 @@ class Tracker(unittest.TestCase):
 
         goodFeatures = []
         myShiTomasi_minVal, myShiTomasi_maxVal, _, _ = cv2.minMaxLoc(myShiTomasi_dst)
-        # print(f"{myShiTomasi_minVal=}")
-        # print(f"{myShiTomasi_maxVal=}")
 
         for i in range(src_gray.shape[0]):
             for j in range(src_gray.shape[1]):
-                if myShiTomasi_dst[i,j] > self.myShiTomasiNewFeaturesThreshold: # myShiTomasi_minVal + ( myShiTomasi_maxVal - myShiTomasi_minVal ) * self.myShiTomasiThreshold:
+                if myShiTomasi_dst[i,j] > Threshold: # myShiTomasi_minVal + ( myShiTomasi_maxVal - myShiTomasi_minVal ) * self.myShiTomasiThreshold:
                     goodFeatures.append([[self.x0 + j, self.y0 + i]])
-        # sort 
 
         return goodFeatures
-
-    #---------------------------------------------------------------------------------------------------------------------
-
-    def searchLargerRoi(self, newFrame):
-        newFeatures = None
-        span = 1
-        while type(newFeatures) == type(None):
-            span *= 2
-            roiMask = np.zeros((self.frameHeight, self.frameWidth), dtype=np.uint8)
-            roiMask[self.y0 - span:self.y1 + span, self.x0 - span:self.x1 + span] = 255
-
-            newFeatures = self.getImageFeatures(newFrame, roiMask)
-
-        return newFeatures
-
-    #---------------------------------------------------------------------------------------------------------------------
-
-    def getClosestFeatures(self, newFeatruePoints, p0):
-
-        p0Good = []
-        for oldP0 in p0:
-
-            minDistance = np.Inf
-            for newIdx, newP0 in enumerate(newFeatruePoints):
-
-                dist = np.linalg.norm(newP0-oldP0)
-                if dist < minDistance:
-                    minDistanceIdx = newIdx
-            p0Good.append(newFeatruePoints[minDistanceIdx])
-        p0Good = np.array(p0Good)
-
-        return p0Good
 
     #---------------------------------------------------------------------------------------------------------------------
 
@@ -220,6 +189,129 @@ class Tracker(unittest.TestCase):
         self.roiMask[self.y0:self.y1, self.x0:self.x1] = 255
 
     #---------------------------------------------------------------------------------------------------------------------
+
+    def getOpticalFlowFeatures(self, oldImg, newImg, p0):
+        # Calculates an optical flow for a sparse feature set using the iterative Lucas-Kanade method with pyramids.            
+        # Assuming:         
+        # 1.The pixel intensities of an object do not change between consecutive frames.
+        # 2. Neighbouring pixels have similar motion.
+
+        oldGray = cv2.cvtColor(oldImg, cv2.COLOR_BGR2GRAY)
+        newGray = cv2.cvtColor(newImg, cv2.COLOR_BGR2GRAY)
+
+        p1, st, err = cv2.calcOpticalFlowPyrLK(
+                prevImg=oldGray,        # first 8-bit input image
+                nextImg=newGray,        # second input image
+                prevPts=p0,             # vector of 2D points for which the flow needs to be found.
+                nextPts=None,
+                winSize = (21, 21),       # size of the search window at each pyramid level
+                maxLevel = 2,           #0-based maximal pyramid level number; if set to 0, pyramids are not used (single level), if set to 1, two levels are used, and so on                
+                criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.03), # parameter, specifying the termination criteria of the iterative search algorithm                
+                flags = cv2.OPTFLOW_LK_GET_MIN_EIGENVALS,
+                minEigThreshold = self.myShiTomasiNewFeaturesThreshold
+         )# criteria -> after the specified maximum number of iterations criteria.maxCount or when the search window moves by less than criteria.epsilon
+
+        p1Good = self.removeBadFeatures(p1, st, err)   
+
+        return p1Good
+
+    #---------------------------------------------------------------------------------------------------------------------
+
+    def removeBadFeatures(self, p1, st, err):
+
+        # print(f"{p1=}")
+        # print(f"{st=}")	
+        # print(f"{err=}")
+    
+        status0List = []
+        
+        for errIdx, errEle in enumerate(err):
+            if errEle[0] > self.opticalFlowErrorThreshold or st[errIdx] == [0] or \
+             (not self.y0 <= p1[errIdx][0][1] <= self.y1) or (not self.x0 <= p1[errIdx][0][0] <= self.x1):
+                status0List.append(errIdx)
+
+        p1Good = np.delete(p1,status0List, axis=0)
+        
+        return p1Good
+
+    #---------------------------------------------------------------------------------------------------------------------
+
+    def drawFeatures(self, frame, newFeatures, oldFeatures):
+         
+        for idx, (new, old) in enumerate(zip(newFeatures[0:self.maxNumOfFeaturesShown], oldFeatures[0:self.maxNumOfFeaturesShown])): 
+				
+            p1X, p1Y = new.ravel().astype(np.uint32)
+            p0X, p0Y = old.ravel().astype(np.uint32)
+
+            self.linesMask = cv2.line(self.linesMask, (p1X, p1Y), (p0X, p0Y), self.color[idx].tolist(), 2)
+
+            frame = cv2.circle(frame, (p1X, p1Y), 5, self.color[idx].tolist(), -1)
+    
+        if self.to_draw_line:
+            frame = cv2.add(frame, self.linesMask)
+        return frame
+
+    #---------------------------------------------------------------------------------------------------------------------
+
+if __name__ == '__main__':
+    suite = unittest.TestLoader().loadTestsFromTestCase(Tracker)
+    unittest.TextTestRunner(verbosity=0).run(suite)
+
+
+
+
+
+                # print(f"{newFeatruePoints=}")
+                # print(f"{p0=}")
+                # if type(newFeatruePoints) != type(None) and newFeatruePoints.size > p0.size:
+                #     print("newFeatruePoints.size > p0.size")
+                #     p0 = self.getClosestFeatures(newFeatruePoints, p0)
+                # else:
+                #     print("p0 same size")
+                    
+                #     p0 = newFeatruePoints
+
+
+    # #---------------------------------------------------------------------------------------------------------------------
+
+    # def getClosestFeatures(self, newFeatruePoints, p0):
+
+    #     p0Good = []
+    #     for oldP0 in p0:
+
+    #         minDistance = np.Inf
+    #         for newIdx, newP0 in enumerate(newFeatruePoints):
+
+    #             dist = np.linalg.norm(newP0-oldP0)
+    #             if dist < minDistance:
+    #                 minDistanceIdx = newIdx
+    #         p0Good.append(newFeatruePoints[minDistanceIdx])
+    #     p0Good = np.array(p0Good)
+
+    #     return p0Good
+
+
+
+
+    #---------------------------------------------------------------------------------------------------------------------
+
+    # def searchLargerRoi(self, newFrame):
+    #     newFeatures = None
+    #     span = 1
+    #     while type(newFeatures) == type(None):
+    #         span *= 2
+    #         roiMask = np.zeros((self.frameHeight, self.frameWidth), dtype=np.uint8)
+    #         roiMask[self.y0 - span:self.y1 + span, self.x0 - span:self.x1 + span] = 255
+
+    #         newFeatures = self.getImageFeatures(newFrame, roiMask)
+
+    #     return newFeatures
+
+
+
+
+    #---------------------------------------------------------------------------------------------------------------------
+'''         cv2.goodFeaturesToTrack uses the min eigen value and takes qualityLevel*maxValue rather than above a threshold as implemented above
 
     def getImageFeatures(self, img, roiMask = None):
         # This function returns all features with threshold > (qualityLevel* max_value_feature), rather than absolute val as threshold
@@ -257,89 +349,4 @@ class Tracker(unittest.TestCase):
         # The remaining corners are sorted by the quality measure in the descending order.
         # Function throws away each corner for which there is a stronger corner at a distance less than maxDistance.
 
-    #---------------------------------------------------------------------------------------------------------------------
-
-    def getOpticalFlowFeatures(self, oldImg, newImg, p0):
-        # Calculates an optical flow for a sparse feature set using the iterative Lucas-Kanade method with pyramids.            
-        # Assuming:         
-        # 1.The pixel intensities of an object do not change between consecutive frames.
-        # 2. Neighbouring pixels have similar motion.
-
-        oldGray = cv2.cvtColor(oldImg, cv2.COLOR_BGR2GRAY)
-        newGray = cv2.cvtColor(newImg, cv2.COLOR_BGR2GRAY)
-
-        p1, st, err = cv2.calcOpticalFlowPyrLK(
-                prevImg=oldGray,        # first 8-bit input image
-                nextImg=newGray,        # second input image
-                prevPts=p0,             # vector of 2D points for which the flow needs to be found.
-                nextPts=None,
-                winSize = (21, 21),       # size of the search window at each pyramid level
-                maxLevel = 2,           #0-based maximal pyramid level number; if set to 0, pyramids are not used (single level), if set to 1, two levels are used, and so on                
-                criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.03), # parameter, specifying the termination criteria of the iterative search algorithm                
-                flags = cv2.OPTFLOW_LK_GET_MIN_EIGENVALS,
-                minEigThreshold = self.myShiTomasiNewFeaturesThreshold
-         )# criteria -> after the specified maximum number of iterations criteria.maxCount or when the search window moves by less than criteria.epsilon
-
-        p1Good = self.removeBadFeatures(p1, st, err)   
-
-        return p1Good
-
-    #---------------------------------------------------------------------------------------------------------------------
-
-    def removeBadFeatures(self, p1, st, err):
-
-        print(f"{p1=}")
-        print(f"{st=}")	
-        print(f"{err=}")
-    
-        status0List = []
-        
-        for errIdx, errEle in enumerate(err):
-            if errEle[0] > self.opticalFlowErrorThreshold or st[errIdx] == [0] or \
-             (not self.y0 <= p1[errIdx][0][1] <= self.y1) or (not self.x0 <= p1[errIdx][0][0] <= self.x1):
-                status0List.append(errIdx)
-
-        p1Good = np.delete(p1,status0List, axis=0)
-        
-        return p1Good
-
-    #---------------------------------------------------------------------------------------------------------------------
-
-    def drawFeatures(self, frame, newFeatures, oldFeatures):
-         
-        for idx, (new, old) in enumerate(zip(newFeatures[0:1], oldFeatures[0:1])): 
-				
-            p1X, p1Y = new.ravel().astype(np.uint32)
-            p0X, p0Y = old.ravel().astype(np.uint32)
-
-            self.linesMask = cv2.line(self.linesMask, (p1X, p1Y), (p0X, p0Y), self.color[idx].tolist(), 2)
-
-            frame = cv2.circle(frame, (p1X, p1Y), 5, self.color[idx].tolist(), -1)
-
-        # print(f"{self.x0=}")        
-        # print(f"{self.x1=}")        
-        # print(f"{self.y0=}")        
-        # print(f"{self.y1=}")        
-        if self.to_draw_line:
-            frame = cv2.add(frame, self.linesMask)
-        return frame
-
-    #---------------------------------------------------------------------------------------------------------------------
-
-if __name__ == '__main__':
-    suite = unittest.TestLoader().loadTestsFromTestCase(Tracker)
-    unittest.TextTestRunner(verbosity=0).run(suite)
-
-
-
-
-
-                # print(f"{newFeatruePoints=}")
-                # print(f"{p0=}")
-                # if type(newFeatruePoints) != type(None) and newFeatruePoints.size > p0.size:
-                #     print("newFeatruePoints.size > p0.size")
-                #     p0 = self.getClosestFeatures(newFeatruePoints, p0)
-                # else:
-                #     print("p0 same size")
-                    
-                #     p0 = newFeatruePoints
+'''
