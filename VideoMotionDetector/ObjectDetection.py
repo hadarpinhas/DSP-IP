@@ -32,9 +32,15 @@ class ObjectDetection(unittest.TestCase):
         basePath = r"C:\Users\User\Documents\dataBase\DSP-IP"
 
         relPath = r"videos\IR_Videos\IR_AIRPLANE_002.mp4"
+        outRelPath = r"videos\IR_Videos\outputVideos\IR_AIRPLANE_002.mp4"
 
         videoPath = os.path.join(basePath , relPath) 
-        
+        self.outputVideoPath = os.path.join(basePath , outRelPath)
+        print(f"{self.outputVideoPath=}")
+
+        self.fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        self.outputFps = 30.0
+
         self.cap = cv2.VideoCapture(videoPath)
         self.startDetectionFrame = 0 # 
 
@@ -45,92 +51,96 @@ class ObjectDetection(unittest.TestCase):
         self.screenSizeFactor = 1 # 0.9 for my laptop smaller screen
 
         self.frameCutFactor = 0.9 # to cut annotation like FLIR and other trademarks...
+        
+        self.bboxWidth, self.bboxHeight = 10, 10
 
     #---------------------------------------------------------------------------------------------------------------------
 
     def runTracker(self):
 
-        self.getFirstImage()
+        self.startTrakcerLoop()
 
         cv2.destroyAllWindows() 
         self.cap.release()
-
+        
     #---------------------------------------------------------------------------------------------------------------------
 
-    def getFirstImage(self):
-
+    def startTrakcerLoop(self):
         frameNumber = 0
         _, firstFrame = self.cap.read()
         while(frameNumber < self.startDetectionFrame): # skip irrelevant frames
             _, firstFrame = self.cap.read()            
             frameNumber += 1
+            
+        frameWidth  = firstFrame.shape[1] - 2 * (firstFrame.shape[1] - int(firstFrame.shape[1] * self.frameCutFactor))
+        frameHeight = firstFrame.shape[0] - 2 * (firstFrame.shape[0] - int(firstFrame.shape[0] * self.frameCutFactor))
 
-        if self.screenSizeFactor != 1: # for my laptop smaller screen
-            firstFrame = cv2.resize(firstFrame, None, fx=self.screenSizeFactor,fy=self.screenSizeFactor)
+        self.outputVideo = cv2.VideoWriter(filename=self.outputVideoPath, fourcc=self.fourcc, fps=self.outputFps, frameSize=(frameWidth, frameHeight))
 
-        self.frameWidth, self.frameHeight = int(firstFrame.shape[1] * self.frameCutFactor), int(firstFrame.shape[0] * self.frameCutFactor)
+        while(True):
+            _, newFrame = self.cap.read()
+            if type(newFrame) == type(None):
+                break
+            if self.screenSizeFactor != 1: # for my laptop smaller screen
+                newFrame = cv2.resize(newFrame, None, fx=self.screenSizeFactor,fy=self.screenSizeFactor)
 
-        firstFrame = firstFrame[firstFrame.shape[0] - self.frameHeight : self.frameHeight,\
-                                firstFrame.shape[1] - self.frameWidth  : self.frameWidth ]
+            self.frameWidth, self.frameHeight = int(newFrame.shape[1] * self.frameCutFactor), int(newFrame.shape[0] * self.frameCutFactor)
 
-        # self.x0, self.x1 = xi, xi + self.bboxWidth
-        # self.y0, self.y1 = yi, yi + self.bboxHeight
+            newFrame = newFrame[newFrame.shape[0] - self.frameHeight : self.frameHeight,\
+                                newFrame.shape[1] - self.frameWidth  : self.frameWidth ]
+            print(f"{newFrame.shape=}")
 
-        # self.linesMask  = np.zeros_like((firstFrame))
-        # self.roiMask    = np.zeros((self.frameHeight, self.frameWidth), dtype=np.uint8)
-        # self.roiMask[self.y0:self.y1, self.x0:self.x1] = 255
+            self.findBbox(newFrame)
 
-        # goodFeatures = 
-        # bluredImage = self.detectObject(firstFrame)
-        firstFrame = cv2.cvtColor(firstFrame, cv2.COLOR_BGR2GRAY)
-        firstFrameOrigi = firstFrame.copy()
+            cv2.imshow('frame', newFrame) 
 
-        bluredImage = cv2.GaussianBlur(src=firstFrame, ksize=(5, 5), sigmaX=3)
-        # bluredImage = cv2.medianBlur(src=firstFrame, ksize=5)
-        # p0 = np.array(goodFeatures).copy().astype(np.float32)
+            self.outputVideo.write(newFrame)
+               
+            k = cv2.waitKey(self.waitKeyParameter)
+            if k == 27: 
+                break
 
-        # self.drawFeatures(firstFrame, newFeatures = p0, oldFeatures = p0)
-
-        # diffImage = cv2.absdiff(firstFrame, bluredImage)
-        # print(f"{diffImage.shape=}")
-        # print(f"{type(diffImage)=}")
-        ret, thresholdImage = cv2.threshold(bluredImage, 200, 255, cv2.THRESH_BINARY)
-        # morphImage =  cv2.erode(bluredImage, cv2.getStructuringElement(cv2.MORPH_RECT, (3,3)))
-        morphImage =  cv2.morphologyEx(src=thresholdImage, op=cv2.MORPH_OPEN, kernel=(11,11), iterations=1)
-        finalImage = morphImage.copy()
-   
-
-        (y0, x0) = np.unravel_index(finalImage.argmax(), finalImage.shape)
-
-        print(f"{x0=}, {y0=}")
-        bboxWidth, bboxHeight = 10, 10
-
-        cv2.rectangle(img=firstFrame, pt1=(x0-bboxWidth, y0-bboxHeight), pt2=(x0+bboxWidth, y0+bboxHeight), color=(255,255,255), thickness=1)   
-
-        cv2.imshow('FirstImage', firstFrameOrigi) 
-        cv2.waitKey(0)
-        cv2.imshow('bluredImage', bluredImage) 
-        cv2.waitKey(0)
-        # cv2.imshow('diffImage', diffImage) 
-        # cv2.waitKey(0)
-        cv2.imshow('thresholdImage', thresholdImage) 
-        cv2.waitKey(0)
-        cv2.imshow('morphImage', morphImage) 
-        cv2.waitKey(0)
-        cv2.imshow('finalImage', firstFrame) 
-        cv2.waitKey(0)
-
-
-        
-        # return firstFrame, p0
+        cv2.destroyAllWindows() 
+        self.cap.release()
+        self.outputVideo.release()
 
     #---------------------------------------------------------------------------------------------------------------------
+        
+    def findBbox(self, frame):
+        frameGray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-    def detectObject(self, img):
-        bluredImage = cv2.GaussianBlur(src=img, ksize=(5, 5), sigmaX=2)
+        bluredImage = cv2.GaussianBlur(src=frameGray, ksize=(5, 5), sigmaX=3)
 
-        return bluredImage
+        ret, thresholdImage = cv2.threshold(bluredImage, 187, 255, cv2.THRESH_BINARY)
+
+        # morphImage =  cv2.morphologyEx(src=thresholdImage, op=cv2.MORPH_OPEN, kernel=(11,11), iterations=1)
+
+        # cv2.imshow("morphImage", thresholdImage)
+        # cv2.waitKey(0)
+
+        numLabels, labels, stats, centroids =  cv2.connectedComponentsWithStats(image=thresholdImage, connectivity=4, ltype=cv2.CV_32S)
+	    # x,y,w,h,area = stats[i, cv2.CC_STAT_LEFT], stats[i, cv2.CC_STAT_TOP], stats[i, cv2.CC_STAT_WIDTH], stats[i, cv2.CC_STAT_HEIGHT], stats[i, cv2.CC_STAT_AREA]
+        if numLabels > 1:
+            areasList = stats[:, cv2.CC_STAT_AREA] 
+
+            print(f"{stats=}")
+            print(f"{areasList=}")
+            maxAreaIdx = np.argmax(areasList[1:]) # index 0 is for background with the maximal area
+            print(f"{maxAreaIdx=}")
+            self.cX,self.cY = centroids[1:][maxAreaIdx]
+            print(f"{self.cX,self.cY}")
+
+            # finalImage = morphImage.copy()
     
+            # (yi, xi) = np.unravel_index(finalImage.argmax(), finalImage.shape)
+
+            # print(f"{xi=}, {yi=}")
+            # x0, x1 = xi-self.bboxWidth,  xi+self.bboxWidth
+            # y0, y1 = yi-self.bboxHeight, yi+self.bboxHeight
+
+            # cv2.rectangle(img=frame, pt1=(x0, y0), pt2=(x1, y1), color=(255,0,0), thickness=1)   
+        cv2.circle(img=frame, center=(int(self.cX), int(self.cY)), radius=1, color=(0,0,255), thickness=-1)   
+
     #---------------------------------------------------------------------------------------------------------------------
 
 if __name__ == '__main__':
