@@ -30,15 +30,13 @@ class Tracker(unittest.TestCase):
 
         # short video using this: ffmpeg -i ENY_30_335.mp4 -ss 00:05:30 -t 00:01:20 -c:v copy -c:a copy ENY_30_335_len_1m2s.mp4
 
-        basePath = r"/home/yossi/Documents/database/hadar"
+        # basePath = r"/home/yossi/Documents/database/hadar"
+        basePath = r"C:\Users\User\Documents\dataBase\DSP-IP"
 
-        relPath = r"videos/NOT_ANNOTATED_MOVIES/NOT_ANNOTATED_MOVIES/ENY_30_335_len_1m2s.mp4"
-        # relPath = r"videos/NOT_ANNOTATED_MOVIES/NOT_ANNOTATED_MOVIES/ENY_30_337_start_2m10s.mp4"
-        # relPath = r"videos/NOT_ANNOTATED_MOVIES/NOT_ANNOTATED_MOVIES/ENY_30_338_start_3p20s_for_60s.mp4"
+        # relPath = r"videos/IR_Videos/drone1_1m.mp4"
+        relPath = r"videos/OpticalTracker\Attack\Attack\AVT_FOV Fixed FOV 8_Russian_motion.avi"
 
-        outRelPath = r"videos/outputVideos/videoOutput2_ENY_30_335.mp4"
-        # outRelPath = r"videos/outputVideos/videoOutput_ENY_30_337.mp4"
-        # outRelPath = r"videos/outputVideos/videoOutput_ENY_30_338_start_3p20s_for_60s.mp4"
+        outRelPath = r"videos/OpticalTracker\outputVideos/output_AVT_FOV Fixed FOV 8_Russian_motion.mp4"
 
         videoPath = os.path.join(basePath , relPath)      
         self.outputVideoPath = os.path.join(basePath , outRelPath)
@@ -56,7 +54,7 @@ class Tracker(unittest.TestCase):
 
         self.to_draw_line = False        
 
-        self.screenSizeFactor = 2 # 0.9 for my laptop smaller screen
+        self.screenSizeFactor = 0.9 # 0.9 for my laptop smaller screen
 
         self.maxNumOfFeaturesShown = 1 # number of circles annotating features (corners) found in the image
 
