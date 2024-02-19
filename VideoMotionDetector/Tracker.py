@@ -2,6 +2,7 @@
 from   pathlib              import Path
 import unittest
 import time
+import datetime
 import cv2
 import numpy as np
 import sys
@@ -31,14 +32,22 @@ class Tracker(unittest.TestCase):
         # short video using this: ffmpeg -i ENY_30_335.mp4 -ss 00:05:30 -t 00:01:20 -c:v copy -c:a copy ENY_30_335_len_1m2s.mp4
 
         # basePath = r"/home/yossi/Documents/database/hadar"
-        basePath = r"C:\Users\User\Documents\dataBase\DSP-IP"
+        basePath = r"C:\Users\User\Documents\dataBase\DSP-IP\videos"
 
         # relPath = r"videos/IR_Videos/drone1_1m.mp4"
-        relPath = r"videos/OpticalTracker\Attack\Attack\AVT_FOV Fixed FOV 8_Russian_motion.avi"
+        # relPath = Path(r"Attack\Attack\AVT_FOV Fixed FOV 8_Russian_motion.avi")
+        # relPath = Path(r"miniPOP_videos/NightCamera06.ts")
 
-        outRelPath = r"videos/OpticalTracker\outputVideos/output_AVT_FOV Fixed FOV 8_Russian_motion.mp4"
+        relPath = Path(r"miniPOP_videos/videos/DayCamera07.mp4")
+        # relPath = Path(r"miniPOP_videos/videos/DayCamera07.ts")
 
-        videoPath = os.path.join(basePath , relPath)      
+        pathName = relPath.stem# A/B/name.png -> name
+        pathParent = relPath.parents[0] # A/B/name.png -> A/B
+
+        curTime = datetime.datetime.now().strftime("%d%m%Y_%H%M%S")
+        outRelPath = str(pathParent) + '\\' + str(pathName) + '_' + curTime + ".mp4"
+
+        videoPath = os.path.join(basePath , str(relPath))      
         self.outputVideoPath = os.path.join(basePath , outRelPath)
 
         print(f"\n{videoPath=}")
@@ -54,7 +63,7 @@ class Tracker(unittest.TestCase):
 
         self.to_draw_line = False        
 
-        self.screenSizeFactor = 0.9 # 0.9 for my laptop smaller screen
+        self.screenSizeFactor = 1 # 0.9 for my laptop smaller screen
 
         self.maxNumOfFeaturesShown = 1 # number of circles annotating features (corners) found in the image
 
@@ -79,7 +88,8 @@ class Tracker(unittest.TestCase):
     def getFirstImage(self):
 
         frameNumber = 0
-        _, firstFrame = self.cap.read()
+        success, firstFrame = self.cap.read()
+        assert success == True 
         while(frameNumber < self.startDetectionFrame): # skip irrelevant frames
             _, firstFrame = self.cap.read()            
             frameNumber += 1
@@ -113,9 +123,10 @@ class Tracker(unittest.TestCase):
         oldFrame = firstFrame
         
         while(True):
-            _, newFrame = self.cap.read()
-            if type(newFrame) == type(None):
-                break
+            success, newFrame = self.cap.read()
+            assert success == True
+            # if type(newFrame) == type(None):
+            #     break
             if self.screenSizeFactor != 1: # for my laptop smaller screen
                 newFrame = cv2.resize(newFrame, None, fx=self.screenSizeFactor,fy=self.screenSizeFactor)
 
