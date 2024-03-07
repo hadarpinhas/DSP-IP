@@ -18,9 +18,12 @@ classesFile = "../model/classes.names"
 with open(classesFile, 'rt') as f:
     classes = f.read().rstrip('\n').split('\n')
 
-inputVidPath = r'/home/yossi/Documents/database/hadar/videos/parkingLot/inupt2.mp4'
+# inputVidPath = r'/home/yossi/Documents/database/hadar/videos/parkingLot/input1.mp4'
+inputVidPath = r'/home/yossi/Documents/database/hadar/videos/police/police.mp4'
 
-manual_select_roi = False
+manual_select_roi = True
+margin = 50
+
 
 # Load the network
 modelConfiguration = "../model/config/darknet-yolov3.cfg"
@@ -151,7 +154,6 @@ def match(baseImg, templateImg):
 
     return max_loc
 
-margin = 20
 
 # Main loop
 if __name__ == "__main__":
@@ -179,7 +181,7 @@ if __name__ == "__main__":
             y0, y1 = yi, yi + bboxHeight
             template = frame[y0:y1, x0:x1]
 
-            assert y0-margin > 0 and x0-margin > 0 and y1+margin<frame.shape[0] and x1+margin<frame.shape[1], "outside frame"
+            assert y0-margin >= 0 and x0-margin >= 0 and y1+margin<frame.shape[0] and x1+margin<frame.shape[1], "outside frame"
             y0, y1, x0, x1 = y0-margin, y1+margin, x0-margin, x1+margin # for searchBox
 
             is_roi_inside = True    
@@ -197,19 +199,21 @@ if __name__ == "__main__":
 
         multiTracker = updateTrackersAndDetections(frame, outs, multiTracker)
 
-        if manual_select_roi  and is_roi_inside:
+        if manual_select_roi and is_roi_inside and is_match_template:
             searchBox = frame[y0:y1, x0:x1]  
             max_loc = match(baseImg=searchBox, templateImg=template)
             print(f"{max_loc=}")
             xShift, yShift = max_loc[0] - margin, max_loc[1] - margin
             x0, x1, y0, y1 =  x0 + xShift, x1 + xShift, y0 + yShift, y1 + yShift
             print(x0, x1, y0, y1)
-            if x0 > 0 and y0 > 0 and x1 < frame.shape[1] and y1 < frame.shape[0]:
+            if x0 >= 0 and y0 >= 0 and x1 < frame.shape[1] and y1 < frame.shape[0]:
 
                 left, top = x0 + margin , y0 + margin
                 cv.rectangle(frame, (left, top), (left + bboxWidth, top + bboxHeight), (0,0,255), 2, 1)
             else:
                 is_roi_inside = False
+        elif manual_select_roi and is_roi_inside:
+            
 
         # Display the frame
         cv.imshow('frame', frame)
