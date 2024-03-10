@@ -34,14 +34,11 @@ class ObjectDetection(unittest.TestCase):
     #---------------------------------------------------------------------------------------------------------------------
 
     def setParameters(self):
-               
-        # basePath = r"/home/yossi/Documents/database/hadar" # for yossi pc
-        basePath = r"C:\Users\User\Documents\dataBase\DSP-IP\videos\OpticalTracker"
-        basePath = r"C:\Users\User\Documents\dataBase\DSP-IP\videos"
 
-        # relPath = r"videos/IR_Videos/output_drone1_1m.mp4"                # input path
-        # relPath = Path(r"miniPOP_videos/videos/NightCamera06.ts")
-        relPath = Path(r"miniPOP_videos/videos/DayCamera07.ts")
+        basePath = Path(r"/home/yossi")
+        # basePath = r"C:\Users\User\"
+
+        relPath = Path('Documents/database/hadar/videos/teaser/wiggle_0.mp4')
 
         pathName = relPath.stem# A/B/name.png -> name
         pathParent = relPath.parents[0] # A/B/name.png -> A/B
@@ -49,7 +46,7 @@ class ObjectDetection(unittest.TestCase):
         curTime = datetime.datetime.now().strftime("%d%m%Y_%H%M%S")
         outRelPath = str(pathParent) + '\\' + str(pathName) + '_' + curTime + ".mp4"
 
-        videoPath = os.path.join(basePath , str(relPath)) 
+        videoPath = basePath / relPath 
         self.outputVideoPath = os.path.join(basePath , outRelPath)
         print(f"{videoPath=}")
         print(f"{self.outputVideoPath=}")
@@ -57,7 +54,7 @@ class ObjectDetection(unittest.TestCase):
         self.fourcc = cv2.VideoWriter_fourcc(*'mp4v')
         self.outputFps = 30.0
 
-        self.cap = cv2.VideoCapture(videoPath)
+        self.cap = cv2.VideoCapture(str(videoPath))
         self.startDetectionFrame = 600 # 
 
         self.waitKeyParameter = 100 # in milliseconds, -1/0 for paused, alternatively, 1 milisecond continuous

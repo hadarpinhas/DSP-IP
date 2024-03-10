@@ -61,7 +61,7 @@ def iou(box1, box2):
 
 def updateTrackersAndDetections(frame, outs, multiTracker):
     frameHeight, frameWidth = frame.shape[:2]
-    classIds, confidences, boxes = [], [], []
+    confidences, boxes = [], []
 
     # Process detections
     for out in outs: # there are 3 outs: (507,6), (2028,6), (8112,6)
@@ -72,7 +72,6 @@ def updateTrackersAndDetections(frame, outs, multiTracker):
             if confidence > confThreshold:
                 center_x, center_y, width, height = (detection[0:4] * np.array([frameWidth, frameHeight, frameWidth, frameHeight])).astype(int)
                 left, top = int(center_x - width / 2), int(center_y - height / 2)
-                classIds.append(classId)
                 confidences.append(float(confidence))
                 boxes.append((left, top, width, height))  # Use tuple for consistency
 
