@@ -18,8 +18,8 @@ classesFile = "../model/classes.names"
 with open(classesFile, 'rt') as f:
     classes = f.read().rstrip('\n').split('\n')
 
-# inputVidPath = r'/home/yossi/Documents/database/hadar/videos/parkingLot/input1.mp4'
-inputVidPath = r'/home/yossi/Documents/database/hadar/videos/police/police.mp4'
+inputVidPath = r'/home/yossi/Documents/database/hadar/videos/parkingLot/input1.mp4'
+# inputVidPath = r'/home/yossi/Documents/database/hadar/videos/police/police.mp4'
 
 manual_select_roi = True
 margin = 50
@@ -198,7 +198,7 @@ if __name__ == "__main__":
 
         multiTracker = updateTrackersAndDetections(frame, outs, multiTracker)
 
-        if manual_select_roi and is_roi_inside and is_match_template:
+        if manual_select_roi and is_roi_inside:
             searchBox = frame[y0:y1, x0:x1]  
             max_loc = match(baseImg=searchBox, templateImg=template)
             print(f"{max_loc=}")
@@ -211,7 +211,6 @@ if __name__ == "__main__":
                 cv.rectangle(frame, (left, top), (left + bboxWidth, top + bboxHeight), (0,0,255), 2, 1)
             else:
                 is_roi_inside = False
-        elif manual_select_roi and is_roi_inside:
             
 
         # Display the frame
