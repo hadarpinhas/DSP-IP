@@ -94,22 +94,21 @@ def match(baseImg: np.ndarray, templateImg: np.ndarray, centerRoiSize: int = 400
 
     max_loc = [max_loc[0]-margin//2, max_loc[1]-margin//2]
 
-    gradBase = gradBase[margin//2:gradBase.shape[0]-margin//2, margin//2:gradBase.shape[1]-margin//2]
-    cv2.imshow('gradBase', gradBase)
-    translation_matrix = np.float32([ [1,0,max_loc[0]], [0,1,max_loc[1]] ])
-    t = 0                    # padSizeTop
-    b = margin    # padSizeBottom
-    l = 0                    # padSizeLeft
-    r = margin  # padSizeRight
-    aligned_image2 = cv2.warpAffine(gradTemplate, translation_matrix, gradTemplate.shape[1::-1])
-    cv2.imshow('aligned_image2', aligned_image2)
-
-    res = res.astype(float) * 255
-
-    print(f"{aligned_image2.shape=}")
-    print(f"{gradBase.shape=}")
-    delta = cv2.absdiff(gradBase, aligned_image2)
-    cv2.imshow('delta', delta*10)
+    show_images = False
+    if show_images:
+        gradBase = gradBase[margin//2:gradBase.shape[0]-margin//2, margin//2:gradBase.shape[1]-margin//2]
+        cv2.imshow('gradBase', gradBase)
+        translation_matrix = np.float32([ [1,0,max_loc[0]], [0,1,max_loc[1]] ])
+        t = 0                    # padSizeTop
+        b = margin    # padSizeBottom
+        l = 0                    # padSizeLeft
+        r = margin  # padSizeRight
+        aligned_image2 = cv2.warpAffine(gradTemplate, translation_matrix, gradTemplate.shape[1::-1])
+        cv2.imshow('aligned_image2', aligned_image2)
+        print(f"{aligned_image2.shape=}")
+        print(f"{gradBase.shape=}")
+        delta = cv2.absdiff(gradBase, aligned_image2)
+        cv2.imshow('delta', delta*10)
 
     # paddedCorrMat = cv2.copyMakeBorder(res, t, b, l, r, cv2.BORDER_CONSTANT, value=[0, 0, 0])
 
@@ -139,3 +138,19 @@ def doSobel(src):
     grad = cv2.addWeighted(abs_grad_x, 1, abs_grad_y, 1, 0)
 
     return grad
+
+
+    #------------------------------------------------------------------------------------------------------
+
+def opticalFlow(prev, next):
+    """
+    https://docs.opencv.org/2.4/modules/video/doc/motion_analysis_and_object_tracking.html#calcopticalflowfarneback
+    prev – first 8-bit single-channel input image
+    """
+
+    flow = cv2.calcOpticalFlowFarneback(prev, next, pyr_scale=0.5, levels=2, winsize=50, iterations=1, poly_n=5, poly_sigma=1.1, flags=0)
+
+    print(f"{flow=}")
+
+    return flow
+
