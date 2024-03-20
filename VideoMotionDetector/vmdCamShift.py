@@ -10,6 +10,7 @@ import cv2
 import os
 import numpy as np
 from collections import deque
+import utils
 # construct the argument parser and parse the arguments
 ap = argparse.ArgumentParser()
 ap.add_argument("-v", "--video", help="path to the video file", 
@@ -17,7 +18,7 @@ ap.add_argument("-v", "--video", help="path to the video file",
 	# default=r'/home/yossi/Documents/database/hadar/videos/smallObjTraffic/trafficVmd.mp4')
 	default=r'C:\Users\User\Documents\dataBase\DSP-IP\videos\smallObjTraffic/trafficVmd.mp4')
 ap.add_argument("-min", "--min-area", type=int, default=10, help="minimum area size")
-ap.add_argument("-max", "--max-area", type=int, default=20, help="minimum area size")
+ap.add_argument("-max", "--max-area", type=int, default=150, help="minimum area size")
 args = vars(ap.parse_args())
 # if the video argument is None, then we are reading from webcam
 if args.get("video", None) is None:
@@ -41,13 +42,18 @@ outputVideo_frame       = cv2.VideoWriter(filename=outputName_frame,       fourc
 # outputVideo_thresh      = cv2.VideoWriter(filename=outputName_thresha,     fourcc=fourcc, fps=30, frameSize=(w, h))
 # outputVideo_frameDelta  = cv2.VideoWriter(filename=outputName_frameDelta,  fourcc=fourcc, fps=30, frameSize=(w, h))
 
-buffer = deque(maxlen=10) # prepera que for 10 last frames
+buffer = deque(maxlen=5) # prepera que for x last frames
 
 # loop over the frames of the video
+freeRun = 100
+for i in range(freeRun):
+	frame = vs.read()
+centerX, centerY = frame[1].shape[1]//2, frame[1].shape[0]//2
 while True:
 	# grab the current frame and initialize the occupied/unoccupied text
 	frame = vs.read()
 	frame = frame if args.get("video", None) is None else frame[1]
+	frame = cv2.getRectSubPix(image=frame, patchSize=(500, 500), center=(centerX, centerY))
 
 	# print(f"{frame.shape=}") # 1920 x 1080 x 3
 	text = "Unoccupied"
@@ -59,27 +65,41 @@ while True:
 	# frame = imutils.resize(frame, width=500)
 	gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 	gray = cv2.GaussianBlur(gray, (11, 11), 0)
-	# if the first frame is None, initialize it
-	if prevFrame is None:
-		prevFrame = gray
-		continue
-	
-    	# compute the absolute difference between the current frame and
-	# prevFrame frame
-	frameDelta = cv2.absdiff(prevFrame, gray)
-	thresh = cv2.threshold(frameDelta, 20, 255, cv2.THRESH_BINARY)[1]
+
+	buffer.append(gray)
+	meanFrameDelta = np.zeros(gray.shape, dtype=np.float32)
+	for i,f in enumerate(list(buffer)[:-1]):
+		print(f"{i=}")
+		# aligned = align_images_with_ecc(template=gray, inputImg=f)
+		max_val, max_loc = utils.match(baseImg=gray, templateImg=f)
+		print(f"{max_loc=}")
+		# Creating a translation matrix
+		translation_matrix = np.float32([ [1,0,max_loc[0]], [0,1,max_loc[1]] ])
+
+		# Image translation
+		img_translated = cv2.warpAffine(f, translation_matrix, gray.shape[1::-1])
+		print(f"{gray.shape=}")
+		print(f"{img_translated.shape=}")
+		frameDelta = cv2.absdiff(img_translated, gray)
+		cv2.imshow('frameDelta', frameDelta)
+
+		meanFrameDelta += frameDelta
+
+	meanFrameDelta = (meanFrameDelta / len(buffer)).astype(np.uint8)
+
+	thresh = cv2.threshold(meanFrameDelta, 10, 255, cv2.THRESH_BINARY)[1]
 	
 	# dilate the thresholded image to fill in holes, then find contours on thresholded image
-	# thresh = cv2.dilate(thresh, None, iterations=3)
-	thresh = cv2.morphologyEx(src=thresh, op=cv2.MORPH_OPEN, kernel=(5,5))
+	thresh = cv2.dilate(thresh, None, iterations=5)
+	# thresh = cv2.morphologyEx(src=thresh, op=cv2.MORPH_CLOSE, kernel=(5,5), iterations=3)
 	cnts = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
 	cnts = imutils.grab_contours(cnts)
 	
 	# loop over the contours
 	for c in cnts:
 		# if the contour is too small, ignore it
-		if cv2.contourArea(c) < args["min_area"]:
-		# if cv2.contourArea(c) > args["max_area"]:
+		# if cv2.contourArea(c) < args["min_area"]:
+		if cv2.contourArea(c) > args["max_area"]:
 			continue
 		# compute the bounding box for the contour, draw it on the frame, and update the text
 		(x, y, w, h) = cv2.boundingRect(c)
@@ -90,29 +110,15 @@ while True:
 	# cv2.putText(frame, "Room Status: {}".format(text), (10, 20),cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
 	cv2.putText(frame, datetime.datetime.now().strftime("%A %d %B %Y %I:%M:%S%p"),(10, frame.shape[0] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 255), 1)
 	# show the frame and record if the user presses a key
-	cv2.imshow("Security Feed", frame)
+	cv2.imshow("frame", frame)
+	cv2.imshow("meanFrameDelta", meanFrameDelta*10)
 	cv2.imshow("Thresh", thresh)
-	cv2.imshow("Frame Delta", frameDelta*10)
-	cv2.imshow("prevFrame", prevFrame)
 
 	# if the `q` key is pressed, break from the lop
-	if cv2.waitKey(0) & 0xFF == ord("q"):
+	if cv2.waitKey(1) & 0xFF == ord("q"):
 		break
 	outputVideo_frame.write(frame)
-	# outputVideo_thresh.write(thresh)
-	# outputVideo_frameDelta.write(frameDelta)
 
-	buffer.append(gray)
-	meanFrame = np.zeros(gray.shape)
-	for f in buffer:
-		cv2.accumulate(f,meanFrame)
-	# print(f"{meanFrame.shape=}")
-	# print(f"{len(buffer)=}")
-	prevFrame = (meanFrame / len(buffer)+1).astype(np.uint8)
-
-	# print(f"{prevFrame.shape=}")
-
-	
 # cleanup the camera and close any open windows
 vs.stop() if args.get("video", None) is None else vs.release()
 
