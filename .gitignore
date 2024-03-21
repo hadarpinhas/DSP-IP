@@ -48,3 +48,5 @@ outputs/
 
 # Datasets
 data/
+YOLOv8
+ultralytics/runs
