@@ -1,0 +1,13 @@
+
+#path: ../datasets/dji_ds 
+#path: ../datasets/iaidsfilter
+#path: ../datasets/VisDrone2019-DET-train/yolo/
+path: ./video_20231105175154/
+
+train: train # train images (relative to 'path') 
+val: val 
+# test:  # test images (optional)
+
+# Classes
+nc: 5  # number of classes
+names: ['obj0','obj1','obj2','obj3','obj4']  # class names

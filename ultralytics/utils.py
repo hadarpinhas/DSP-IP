@@ -1,4 +1,5 @@
 import cv2
+import os
 
 def divide_image_into_tiles(image_path, tile_width, tile_height):
     # Read the image
@@ -39,3 +40,41 @@ def divide_image_into_tiles(image_path, tile_width, tile_height):
 
 # # Optional: Display the number of tiles
 # print(f"Total tiles: {len(tiles)}")
+
+
+
+def getSorted(datasetDir, dirName, ext):
+    """
+    Filters and sorts files in a directory based on their numeric prefix and extension.
+    Reads the sorted files differently based on the extension.
+
+    Parameters:
+    - datasetDir: The base directory where datasets are stored.
+    - dir: The specific directory within datasetDir containing the files.
+    - ext: The file extension to filter by.
+
+    Returns:
+    A list of data loaded from the sorted and filtered files.
+    """
+    unsortedList = os.listdir(os.path.join(datasetDir, dirName))
+
+    # Filter out non-numeric filenames and ensure the file has the specified extension
+    filtered_list = [x for x in unsortedList if x.split('.')[0].isdigit() and x.endswith(ext)]
+
+    # Sort the filtered list
+    sortedList = sorted(filtered_list, key=lambda x: int(x.split('.')[0]))
+
+    dataList = []
+    for file in sortedList:
+        fullPath = os.path.join(datasetDir, dirName, file)
+        if ext == '.jpg':
+            # Read image file
+            data = cv2.imread(fullPath)
+        else:
+            # Read non-image file as text
+            with open(fullPath, 'r') as f:
+                data = f.read()
+        
+        dataList.append(data)
+
+    return dataList
