@@ -1,5 +1,6 @@
 import cv2
 import os
+from pathlib import Path
 
 def divide_image_into_tiles(image_path, tile_width, tile_height):
     # Read the image
@@ -56,25 +57,33 @@ def getSorted(datasetDir, dirName, ext):
     Returns:
     A list of data loaded from the sorted and filtered files.
     """
-    unsortedList = os.listdir(os.path.join(datasetDir, dirName))
+    unsortedList = os.listdir(os.path.join(datasetDir, dirName)) # get a list of files names with extension (stem)
 
     # Filter out non-numeric filenames and ensure the file has the specified extension
-    filtered_list = [x for x in unsortedList if x.split('.')[0].isdigit() and x.endswith(ext)]
+    # filtered_list = [x for x in unsortedList if x.split('.')[0].isdigit() and x.endswith(ext)]
+    filtered_list = [x for x in unsortedList if x.endswith(ext)]
 
     # Sort the filtered list
-    sortedList = sorted(filtered_list, key=lambda x: int(x.split('.')[0]))
+    # sortedList = sorted(filtered_list, key=lambda x: int(x.split('.')[0]))
+    # sortedList = sorted(filtered_list, key=lambda x: int(x[4:-5]))
+    sortedList = sorted(filtered_list, key=lambda x: x.split('.')[0])
 
     dataList = []
     for file in sortedList:
+        dataDic = {}
+        dataDic['name' ] = file.split('.')[0]
+
         fullPath = os.path.join(datasetDir, dirName, file)
-        if ext == '.jpg':
+        if file.endswith(ext) and ext!='.txt': # has to be .jpg/png/... and not txt
             # Read image file
-            data = cv2.imread(fullPath)
-        else:
+            dataDic['image'] = cv2.imread(fullPath)
+        elif file.endswith('.txt'):
             # Read non-image file as text
             with open(fullPath, 'r') as f:
-                data = f.read()
+                dataDic['data'] = f.readlines()
+        else:
+            raise ValueError(f"neither a '.jpg' nor a '.txt'")     
         
-        dataList.append(data)
+        dataList.append(dataDic)
 
     return dataList
